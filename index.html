@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SQL IN Clause Converter</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 40px;
+      background: #f9f9f9;
+    }
+    textarea, input {
+      width: 100%;
+      font-size: 1rem;
+      padding: 10px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #output {
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ddd;
+      white-space: pre-wrap;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:active {
+      background-color: #45a049;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>SQL IN Clause Converter</h1>
+  <textarea id="input" rows="10" placeholder="0051X00000A1BcDQAQ&#10;0051X00000A2EfGZBQ&#10;0051X00000A3HiJKCV&#10;0051X00000A4KlMWEW&#10;0051X00000A5NoPRDX&#10;0051X00000A6QrSYFD&#10;0051X00000A7TuVGJZ&#10;0051X00000A8WxYHLA&#10;0051X00000A9ZaBIKB&#10;0051X00000B0CdELMC"></textarea>
+  <div class="error" id="error"></div>
+
+  <h3>SQL IN Clause:</h3>
+  <div id="output">('')</div>
+  <button onclick="copyToClipboard()">Copy to Clipboard</button>
+
+  <script>
+    const input = document.getElementById('input');
+    const output = document.getElementById('output');
+    const error = document.getElementById('error');
+
+    input.addEventListener('input', () => {
+      const lines = input.value
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+      
+      if (lines.length === 0) {
+        output.textContent = `('')`;
+        error.textContent = '';
+        return;
+      }
+
+      const linesWithQuotes = lines.map(line => `'${line}'`);
+      const outputText = `(${linesWithQuotes.join(', ')})`;
+      output.textContent = outputText;
+
+      const invalidLines = lines.filter(line => line.includes('\''));
+      if (invalidLines.length > 0) {
+        error.textContent = `Error: The following lines contain invalid characters: ${invalidLines.join(', ')}`;
+      } else {
+        error.textContent = '';
+      }
+    });
+
+    function copyToClipboard() {
+      const text = output.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        console.log('Text copied to clipboard');
+      }, () => {
+        console.error('Failed to copy text');
+        alert("Failed to copy.");
+      });
+    }
+  </script>
+
+</body>
+</html>
+
