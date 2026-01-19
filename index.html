@@ -40,6 +40,15 @@
     .error {
       color: red;
     }
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .toggle-container label {
+      margin-left: 8px;
+      font-size: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -50,6 +59,7 @@
 
   <h3>SQL IN Clause:</h3>
   <button onclick="copyToClipboard()">Copy to Clipboard</button>
+  <button id="autocopy-button" onclick="toggleAutoCopy()">Enable AutoCopy</button>
   <br></br>
   <div id="output">('')</div>
 
@@ -57,7 +67,30 @@
     const input = document.getElementById('input');
     const output = document.getElementById('output');
     const error = document.getElementById('error');
+    const autocopyButton = document.getElementById('autocopy-button');
+    let userInteracted = false;
 
+  // Detect first user interaction to enable clipboard access
+  document.addEventListener('click', () => {
+    userInteracted = true;
+  }, { once: true });
+
+    // Initialize the button state from localStorage
+    if (localStorage.getItem('autocopy') === 'true') {
+      autocopyButton.textContent = 'Disable AutoCopy';
+    } else {
+      autocopyButton.textContent = 'Enable AutoCopy';
+    }
+
+    function toggleAutoCopy() {
+      if (autocopyButton.textContent === 'Enable AutoCopy') {
+        autocopyButton.textContent = 'Disable AutoCopy';
+        localStorage.setItem('autocopy', 'true');
+      } else {
+        autocopyButton.textContent = 'Enable AutoCopy';
+        localStorage.setItem('autocopy', 'false');
+      }
+    }
 
     input.addEventListener('input', () => {
       const lines = input.value
@@ -75,20 +108,20 @@
       const outputText = `(${linesWithQuotes.join(', ')})`;
       output.textContent = outputText;
 
-      const invalidLines = lines.filter(line => line.includes('\''));
+      const invalidLines = lines.filter(line => line.includes("'"));
       if (invalidLines.length > 0) {
         error.textContent = `Error: The following lines contain invalid characters: ${invalidLines.join(', ')}`;
       } else {
         error.textContent = '';
       }
 
-      if (localStorage.getItem('autocopy') === 'true') {
+      if (autocopyButton.textContent === 'Disable AutoCopy' && userInteracted) {
         copyToClipboard();
       }
     });
 
     input.dispatchEvent(new Event('input'));
-    
+
     function copyToClipboard() {
       const text = output.textContent;
       navigator.clipboard.writeText(text).then(() => {
