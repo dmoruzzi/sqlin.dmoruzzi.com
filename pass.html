@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Random String Generator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 40px;
+      background: #f9f9f9;
+    }
+    textarea, input {
+      width: 100%;
+      font-size: 1rem;
+      padding: 10px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #output, #random-output {
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ddd;
+      white-space: pre-wrap;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:active {
+      background-color: #45a049;
+    }
+    .error {
+      color: red;
+    }
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .toggle-container label {
+      margin-left: 8px;
+      font-size: 1rem;
+    }
+    .info {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .character-controls {
+      background: #f0f0f0;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+    .toggle-button {
+      background-color: #2196F3;
+      min-width: 120px;
+    }
+    .toggle-button.active {
+      background-color: #4CAF50;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Random String Generator</h1>
+  <p>Enter example text below and the system will automatically analyze it and generate a random string:</p>
+  
+  <textarea id="input" rows="5" placeholder="example"></textarea>
+  
+  <div class="info" id="analysis-info">
+    Analysis: Waiting for input...
+  </div>
+  
+  <div class="character-controls">
+    <h3>Character Set Overrides</h3>
+    <div class="button-group">
+      <button id="toggle-digits" class="toggle-button" onclick="toggleCharacterSet('digits')">Digits (0-9)</button>
+      <span id="digits-status">Auto</span>
+    </div>
+    <div class="button-group">
+      <button id="toggle-uppercase" class="toggle-button" onclick="toggleCharacterSet('uppercase')">Uppercase (A-Z)</button>
+      <span id="uppercase-status">Auto</span>
+    </div>
+    <div class="button-group">
+      <button id="toggle-lowercase" class="toggle-button" onclick="toggleCharacterSet('lowercase')">Lowercase (a-z)</button>
+      <span id="lowercase-status">Auto</span>
+    </div>
+    <div class="button-group">
+      <button id="toggle-hex" class="toggle-button" onclick="toggleCharacterSet('hex')">Hex (A-F, 0-9)</button>
+      <span id="hex-status">Auto</span>
+    </div>
+    <div class="button-group">
+      <button id="toggle-special" class="toggle-button" onclick="toggleCharacterSet('special')">Special (!@#$)</button>
+      <span id="special-status">Auto</span>
+    </div>
+    <button id="reset-overrides" onclick="resetCharacterSetOverrides()">Reset Overrides</button>
+  </div>
+  
+  <button id="autocopy-button" onclick="toggleAutoCopy()">Enable AutoCopy</button>
+  
+  <h3>Generated Random String:</h3>
+  <div id="random-output">Enter some text to generate a random string</div>
+  <button onclick="copyRandomToClipboard()">Copy Random String</button>
+
+  <script>
+    const input = document.getElementById('input');
+    const randomOutput = document.getElementById('random-output');
+    const analysisInfo = document.getElementById('analysis-info');
+    const autocopyButton = document.getElementById('autocopy-button');
+    let userInteracted = false;
+
+    // Character set state - null means auto, true means force include, false means force exclude
+    let characterSets = {
+      digits: null,
+      uppercase: null,
+      lowercase: null,
+      hex: null,
+      special: null
+    };
+
+    // Detect first user interaction to enable clipboard access
+    document.addEventListener('click', () => {
+      userInteracted = true;
+    }, { once: true });
+
+    // Initialize the button state from localStorage
+    if (localStorage.getItem('autocopy') === 'true') {
+      autocopyButton.textContent = 'Disable AutoCopy';
+    } else {
+      autocopyButton.textContent = 'Enable AutoCopy';
+    }
+
+    function toggleAutoCopy() {
+      if (autocopyButton.textContent === 'Enable AutoCopy') {
+        autocopyButton.textContent = 'Disable AutoCopy';
+        localStorage.setItem('autocopy', 'true');
+      } else {
+        autocopyButton.textContent = 'Enable AutoCopy';
+        localStorage.setItem('autocopy', 'false');
+      }
+    }
+
+    function resetCharacterSetOverrides() {
+      characterSets = {
+        digits: null,
+        uppercase: null,
+        lowercase: null,
+        hex: null,
+        special: null
+      };
+      
+      // Reset all buttons to auto state
+      ['digits', 'uppercase', 'lowercase', 'hex', 'special'].forEach(type => {
+        const button = document.getElementById(`toggle-${type}`);
+        const status = document.getElementById(`${type}-status`);
+        button.classList.remove('active');
+        button.classList.add('toggle-button');
+        status.textContent = 'Auto';
+      });
+      
+      generateRandomString();
+    }
+
+    function toggleCharacterSet(type) {
+      // Cycle through states: null (auto) -> true (force include) -> false (force exclude) -> null (auto)
+      if (characterSets[type] === null) {
+        characterSets[type] = true;
+      } else if (characterSets[type] === true) {
+        characterSets[type] = false;
+      } else {
+        characterSets[type] = null;
+      }
+      
+      const button = document.getElementById(`toggle-${type}`);
+      const status = document.getElementById(`${type}-status`);
+      
+      if (characterSets[type] === true) {
+        button.classList.add('active');
+        button.classList.remove('toggle-button');
+        button.classList.add('toggle-button', 'active');
+        status.textContent = 'Forced Include';
+      } else if (characterSets[type] === false) {
+        button.classList.remove('active');
+        button.classList.add('toggle-button');
+        status.textContent = 'Forced Exclude';
+      } else {
+        button.classList.remove('active');
+        button.classList.add('toggle-button');
+        status.textContent = 'Auto';
+      }
+      
+      generateRandomString();
+    }
+
+    // Analyze input text and update analysis info
+    function analyzeInputText(text) {
+      const hasDigits = /\d/.test(text);
+      const hasUppercase = /[A-Z]/.test(text);
+      const hasLowercase = /[a-z]/.test(text);
+      // Hex detection: must contain A-F (case insensitive) AND digits, not just digits alone
+      const hasHexLetters = /[A-F]/.test(text.toUpperCase());
+      const hasHex = hasHexLetters && hasDigits;
+      const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(text);
+
+      let analysis = 'Analysis: ';
+      
+      if (hasDigits) {
+        analysis += 'Detected digits (0-9) ';
+      } else {
+        analysis += 'No digits detected ';
+      }
+
+      if (hasUppercase) {
+        analysis += '| Detected uppercase (A-Z) ';
+      } else {
+        analysis += '| No uppercase detected ';
+      }
+
+      if (hasLowercase) {
+        analysis += '| Detected lowercase (a-z) ';
+      } else {
+        analysis += '| No lowercase detected ';
+      }
+
+      if (hasHex) {
+        analysis += '| Detected hex (A-F, 0-9) ';
+      } else {
+        analysis += '| No hex detected ';
+      }
+
+      if (hasSpecial) {
+        analysis += '| Detected special chars';
+      } else {
+        analysis += '| No special chars detected';
+      }
+
+      analysisInfo.textContent = analysis;
+      
+      return {
+        detectedDigits: hasDigits,
+        detectedUppercase: hasUppercase,
+        detectedLowercase: hasLowercase,
+        detectedHex: hasHex,
+        detectedSpecial: hasSpecial,
+        length: text.length
+      };
+    }
+
+    function generateRandomString() {
+      const text = input.value.trim();
+      
+      if (text.length === 0) {
+        randomOutput.textContent = 'Enter some text to generate a random string';
+        return;
+      }
+
+      const analysis = analyzeInputText(text);
+      const length = analysis.length;
+      
+      // Determine which character sets to use based on auto-detection and user overrides
+      const useDigits = characterSets.digits === null ? analysis.detectedDigits : characterSets.digits;
+      const useUppercase = characterSets.uppercase === null ? analysis.detectedUppercase : characterSets.uppercase;
+      const useLowercase = characterSets.lowercase === null ? analysis.detectedLowercase : characterSets.lowercase;
+      const useHex = characterSets.hex === null ? analysis.detectedHex : characterSets.hex;
+      const useSpecial = characterSets.special === null ? analysis.detectedSpecial : characterSets.special;
+
+      // Validate at least one character set is selected
+      if (!useDigits && !useUppercase && !useLowercase && !useHex && !useSpecial) {
+        randomOutput.textContent = 'Error: No character sets available based on input analysis';
+        return;
+      }
+
+      // Build character pool based on determined character sets
+      let chars = '';
+      if (useDigits) chars += '0123456789';
+      if (useUppercase) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      if (useLowercase) chars += 'abcdefghijklmnopqrstuvwxyz';
+      if (useHex) chars += 'ABCDEF0123456789';
+      if (useSpecial) chars += '!@#$%^&*()_+-=[]{};:"\\|,.<>/?~`';
+
+      // Generate random string
+      let result = '';
+      const randomValues = new Uint32Array(length);
+      window.crypto.getRandomValues(randomValues);
+
+      for (let i = 0; i < length; i++) {
+        result += chars[randomValues[i] % chars.length];
+      }
+
+      randomOutput.textContent = result;
+      
+      // Auto-copy if enabled
+      if (autocopyButton.textContent === 'Disable AutoCopy' && userInteracted) {
+        copyRandomToClipboard();
+      }
+    }
+
+    function copyRandomToClipboard() {
+      const text = randomOutput.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        console.log('Random string copied to clipboard');
+      }, () => {
+        console.error('Failed to copy random string');
+        alert("Failed to copy random string.");
+      });
+    }
+
+    // Generate random string automatically when input changes
+    input.addEventListener('input', () => {
+      generateRandomString();
+    });
+  </script>
+
+</body>
+</html>
